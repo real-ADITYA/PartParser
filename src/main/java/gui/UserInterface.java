@@ -116,7 +116,7 @@ public class UserInterface extends Application{
         cpuButton.setPrefWidth(GUI_WIDTH/4);
         cpuButton.setLayoutX((GUI_WIDTH - cpuButton.getWidth()) / 2.7);
         cpuButton.setLayoutY((GUI_HEIGHT - cpuButton.getHeight()) / 2.5);
-        cpuButton.setOnAction(e -> cpuScreen() );
+        cpuButton.setOnAction(e -> cpuScreenInit() );
         
         Button gpuButton = new Button("GPU Tool");
         gpuButton.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
@@ -136,7 +136,7 @@ public class UserInterface extends Application{
         primaryStage.setResizable(false);
 	}
 	
-	private void cpuScreen() {
+	private void cpuScreenInit() {
 		// Main screen setup
 		VBox mainLayout = new VBox(10);
         
@@ -164,18 +164,33 @@ public class UserInterface extends Application{
         searchButton.setLayoutX(300);
         searchButton.setLayoutY(50);
         searchButton.setPrefWidth(30);
+        
+        Button clearButton = new Button("x");
+        clearButton.setLayoutX(330);
+        clearButton.setLayoutY(50);
+        clearButton.setPrefWidth(30);
+        clearButton.setOnAction(e -> cpuScreenInit());
 
         VBox resultsBox = new VBox(5);
         resultsBox.setLayoutX(10);
         resultsBox.setLayoutY(100);
-        resultsBox.setPrefWidth(230);
+        resultsBox.setPrefWidth(300);
         
+        ScrollPane resultsScroll = new ScrollPane(resultsBox);
+        resultsScroll.setLayoutX(10);
+        resultsScroll.setLayoutY(100);
+        resultsScroll.setPrefSize(320, GUI_HEIGHT - 110);
+        
+        // search button action
         searchButton.setOnAction(e -> {
         	searchField.setDisable(true);
         	searchField.setStyle("-fx-background-color: lightgrey;");
         	resultsBox.getChildren().clear();
         	String query = searchField.getText();
         	List<String> results = searchCPU(query);
+        	if(results.size() == 0) {
+        		resultsBox.getChildren().add(new Label("No results found :/\nPlease narrow your search as much as possible :)"));
+        	}
         	for(String result : results) {
         		// make button for result
         		 Button resultButton = new Button(result);
@@ -185,11 +200,10 @@ public class UserInterface extends Application{
         		 });
         		 resultsBox.getChildren().add(resultButton);
         	}
-                 
-        	
         });
         
-        anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, searchField, searchButton, resultsBox, backButton);
+        anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, searchField, searchButton,
+        		clearButton, resultsScroll, backButton);
         mainLayout.getChildren().addAll(anchorPaneMain);
         
         Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
