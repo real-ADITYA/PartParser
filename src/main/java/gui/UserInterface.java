@@ -1,5 +1,10 @@
 package gui;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hibernate.Session;
+
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -17,13 +22,16 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import parts.CPU;
+import utils.HibernateUtility;
 
 public class UserInterface extends Application{
 
 	private final int GUI_WIDTH = 640;
 	private final int GUI_HEIGHT = 480;
 	private Stage primaryStage;
-	private Button backButton = backButton();
+	private Button backButton;
+	private Button quitButton;
 	
 	
 	@Override
@@ -33,6 +41,10 @@ public class UserInterface extends Application{
 		
 		Image icon = new Image(getClass().getResourceAsStream("/icon/cpu16.png"));
 		primaryStage.getIcons().add(icon);
+		
+		// Initialize some variables
+		this.backButton = backButton();
+		this.quitButton = quitButton();
 		
 		// Login Screen
 		homeScreen();
@@ -50,6 +62,16 @@ public class UserInterface extends Application{
         backButton.setLayoutX(10);
         backButton.setOnAction(e -> homeScreen());
         return backButton;
+	}
+	
+	private Button quitButton() {
+		Button quitButton = new Button("Exit");
+        quitButton.setFont(Font.font("System", FontWeight.LIGHT, FontPosture.ITALIC, 14));
+        quitButton.setPrefWidth(GUI_WIDTH/4);
+        quitButton.setLayoutX((GUI_WIDTH - quitButton.getWidth()) / 2.7);
+        quitButton.setLayoutY((GUI_HEIGHT - quitButton.getHeight()) / 2);
+        quitButton.setOnAction(e -> primaryStage.close() );
+        return quitButton;
 	}
 	
 	private void homeScreen() {
@@ -88,22 +110,24 @@ public class UserInterface extends Application{
         programNameBelow.setLayoutX((GUI_WIDTH - programNameBelow.getWidth()) / 3);
         programNameBelow.setLayoutY((GUI_HEIGHT - programNameBelow.getHeight()) / 4);
         
-        // Add button  
-        Button beginButton = new Button("Begin!");
-        beginButton.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
-        beginButton.setPrefWidth(GUI_WIDTH/4);
-        beginButton.setLayoutX((GUI_WIDTH - beginButton.getWidth()) / 2.7);
-        beginButton.setLayoutY((GUI_HEIGHT - beginButton.getHeight()) / 2.5);
-        beginButton.setOnAction(e -> optionsScreen() );
+        // Add buttons 
+        Button cpuButton = new Button("CPU Tool");
+        cpuButton.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
+        cpuButton.setPrefWidth(GUI_WIDTH/4);
+        cpuButton.setLayoutX((GUI_WIDTH - cpuButton.getWidth()) / 2.7);
+        cpuButton.setLayoutY((GUI_HEIGHT - cpuButton.getHeight()) / 2.5);
+        cpuButton.setOnAction(e -> cpuScreen() );
         
-        Button quitButton = new Button("Exit");
-        quitButton.setFont(Font.font("System", FontWeight.LIGHT, FontPosture.ITALIC, 14));
-        quitButton.setPrefWidth(GUI_WIDTH/4);
-        quitButton.setLayoutX((GUI_WIDTH - quitButton.getWidth()) / 2.7);
-        quitButton.setLayoutY((GUI_HEIGHT - quitButton.getHeight()) / 2);
-        quitButton.setOnAction(e -> primaryStage.close() );
+        Button gpuButton = new Button("GPU Tool");
+        gpuButton.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
+        gpuButton.setPrefWidth(GUI_WIDTH/4);
+        gpuButton.setLayoutX(cpuButton.getLayoutX());
+        gpuButton.setLayoutY(cpuButton.getLayoutY() + 50);
+        //gpuButton.setOnAction(e -> gpuScreen() );
         
-        anchorPaneMain.getChildren().addAll(programName, programNameBelow, beginButton, quitButton);
+        quitButton.setLayoutY(gpuButton.getLayoutX() + 50);
+        
+        anchorPaneMain.getChildren().addAll(programName, programNameBelow, cpuButton, gpuButton, quitButton);
         mainLayout.getChildren().addAll(topMenu, anchorPaneMain);
         
         Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
@@ -112,7 +136,7 @@ public class UserInterface extends Application{
         primaryStage.setResizable(false);
 	}
 	
-	private void searchCPUScreen() {
+	private void cpuScreen() {
 		// Main screen setup
 		VBox mainLayout = new VBox(10);
         
@@ -123,23 +147,49 @@ public class UserInterface extends Application{
         Pane styleTop = new Pane();
         Label programName = new Label("Begin Selection:");
         programName.setFont(Font.font("System", FontWeight.BOLD, FontPosture.ITALIC, 20));
+        programName.setLayoutX(programName.getLayoutX() + 50);
         
-        Label programNameBelow = new Label("Enter a CPU below");
+        Label programNameBelow = new Label("Enter a CPU:");
         programNameBelow.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
-        programNameBelow.setLayoutY(30);
+        programNameBelow.setLayoutY(50);
+        programNameBelow.setLayoutX(10);
         
-        TextField textField = new TextField();
-        textField.setLayoutY(50);
-        textField.setPrefWidth(100);
+        TextField searchField = new TextField();
+        searchField.setLayoutX(100);
+        searchField.setLayoutY(50);
+        searchField.setPrefWidth(200);
         
         // buttons        
         Button searchButton = new Button(">");
-        searchButton.setLayoutX(100);
+        searchButton.setLayoutX(300);
         searchButton.setLayoutY(50);
         searchButton.setPrefWidth(30);
 
+        VBox resultsBox = new VBox(5);
+        resultsBox.setLayoutX(10);
+        resultsBox.setLayoutY(100);
+        resultsBox.setPrefWidth(230);
         
-        anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, textField, searchButton, backButton);
+        searchButton.setOnAction(e -> {
+        	searchField.setDisable(true);
+        	searchField.setStyle("-fx-background-color: lightgrey;");
+        	resultsBox.getChildren().clear();
+        	String query = searchField.getText();
+        	List<String> results = searchCPU(query);
+        	for(String result : results) {
+        		// make button for result
+        		 Button resultButton = new Button(result);
+        		 resultButton.setPrefWidth(resultsBox.getPrefWidth());
+        		 resultButton.setOnAction(n -> {
+                     System.out.println("Clicked on: " + result);
+        		 });
+        		 resultsBox.getChildren().add(resultButton);
+        	}
+                 
+        	
+        });
+        
+        anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, searchField, searchButton, resultsBox, backButton);
         mainLayout.getChildren().addAll(anchorPaneMain);
         
         Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
@@ -148,51 +198,16 @@ public class UserInterface extends Application{
         primaryStage.setResizable(false);
 	}
 	
-	private void optionsScreen() {
-		// Main screen setup
-		VBox mainLayout = new VBox(10);
-		
-		/* ========= Main UI Interface ========= */
-        AnchorPane anchorPaneMain = new AnchorPane();
-
-        // Add text
-        Label programName = new Label("PART PARSER");
-        programName.setFont(Font.font("System", FontWeight.BOLD, FontPosture.ITALIC, 50));
-        programName.setLayoutX((GUI_WIDTH - programName.getWidth()) / 4);
-        programName.setLayoutY((GUI_HEIGHT - programName.getHeight()) / 16);
-        
-        // Add button        
-        Button buttonCPU = new Button("CPU Search");
-        buttonCPU.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
-        buttonCPU.setPrefWidth(GUI_WIDTH/4);
-        buttonCPU.setLayoutX((GUI_WIDTH - buttonCPU.getWidth()) / 2.7);
-        buttonCPU.setLayoutY((GUI_HEIGHT - buttonCPU.getHeight()) / 3);
-        buttonCPU.setOnAction(e -> searchCPUScreen() );
-        
-        Button buttonGPU = new Button("GPU Search");
-        buttonGPU.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
-        buttonGPU.setPrefWidth(GUI_WIDTH/4);
-        buttonGPU.setLayoutX(buttonCPU.getLayoutX());
-        buttonGPU.setLayoutY(buttonCPU.getLayoutY() + 40);
-        buttonGPU.setOnAction(e -> searchCPUScreen() );
-        
-        Button quitButton = new Button("Exit");
-        quitButton.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
-        quitButton.setPrefWidth(GUI_WIDTH/4);
-        quitButton.setLayoutX(buttonCPU.getLayoutX());
-        quitButton.setLayoutY(buttonCPU.getLayoutY() + 80);
-        quitButton.setOnAction(e -> primaryStage.close() );
-        
-        anchorPaneMain.getChildren().addAll(programName, buttonCPU, buttonGPU, quitButton, backButton);
-        mainLayout.getChildren().addAll(anchorPaneMain);
-        
-        Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
-        primaryStage.setScene(mainScene);
-        primaryStage.show();
-        primaryStage.setResizable(false);
-		
+	private List<String> searchCPU(String query){
+		Session session = HibernateUtility.start();
+		List<String> cpuNames = new ArrayList<>();
+		// Get CPUs
+		List<CPU> cpuList = session.createQuery("from CPU where name like :nameParameter", CPU.class)
+				.setParameter("nameParameter", "%" + query + "%").getResultList();
+		for(CPU cpu : cpuList) {
+			cpuNames.add(cpu.getName());
+		}
+		return cpuNames;
 	}
-	
-	
-	
+		
 }
