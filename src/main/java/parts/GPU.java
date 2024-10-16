@@ -79,15 +79,14 @@ public class GPU {
 
     @Override
     public String toString() {
-        String ret = "GPU{" +
-                "productName='" + productName + '\'' +
-                ", gpuChip='" + gpuChip + '\'' +
-                ", bus='" + bus + '\'' +
-                ", memory='" + memory + '\'' +
-                ", gpuClock='" + gpuClock + '\'' +
-                ", memoryClock='" + memoryClock + '\'' +
-                ", shadersTmusRops='" + shadersTmusRops + '\'' +
-                "}\n";
-        return ret;
+    	return "Name: " + this.getProductName() + 
+                "\nGPU Chip: " + this.getGpuChip() + 
+                "\nBus: " + this.getBus() + 
+                "\nMemory: " + this.getMemory() + 
+                "\nGPU Clock: " + this.getGpuChip() + 
+                "\nMemory Clock: " + this.getMemoryClock() + 
+                "\nShaders: " + this.getShaders() + 
+                "\nTMUs: " + this.getTMUs(); 
+                //"\nROPs: " + this.getROPs();
     }
 }

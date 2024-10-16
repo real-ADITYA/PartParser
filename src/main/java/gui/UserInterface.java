@@ -23,6 +23,7 @@ import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import parts.CPU;
+import parts.GPU;
 import utils.HibernateUtility;
 
 public class UserInterface extends Application{
@@ -41,6 +42,7 @@ public class UserInterface extends Application{
 		
 		Image icon = new Image(getClass().getResourceAsStream("/icon/cpu16.png"));
 		primaryStage.getIcons().add(icon);
+		HibernateUtility.start();
 		
 		// Initialize some variables
 		this.backButton = backButton();
@@ -123,7 +125,7 @@ public class UserInterface extends Application{
         gpuButton.setPrefWidth(GUI_WIDTH/4);
         gpuButton.setLayoutX(cpuButton.getLayoutX());
         gpuButton.setLayoutY(cpuButton.getLayoutY() + 50);
-        //gpuButton.setOnAction(e -> gpuScreen() );
+        gpuButton.setOnAction(e -> gpuScreenInit() );
         
         quitButton.setLayoutY(gpuButton.getLayoutX() + 50);
         
@@ -181,13 +183,25 @@ public class UserInterface extends Application{
         resultsScroll.setLayoutY(100);
         resultsScroll.setPrefSize(320, GUI_HEIGHT - 110);
         
+        VBox infoBox = new VBox(10);
+        infoBox.setLayoutX(350);
+        infoBox.setLayoutY(100);
+        infoBox.setPrefWidth(280);
+        Label infoTitle = new Label("CPU Information:");
+        infoTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+        Label infoContent = new Label("Select a CPU to view details.");
+        infoContent.setWrapText(true);
+        infoBox.getChildren().addAll(infoTitle, infoContent);
+
+        Button addButton = new Button();
+        
         // search button action
         searchButton.setOnAction(e -> {
         	searchField.setDisable(true);
         	searchField.setStyle("-fx-background-color: lightgrey;");
         	resultsBox.getChildren().clear();
         	String query = searchField.getText();
-        	List<String> results = searchCPU(query);
+        	List<String> results = HibernateUtility.searchCPU(query);
         	if(results.size() == 0) {
         		resultsBox.getChildren().add(new Label("No results found :/\nPlease narrow your search as much as possible :)"));
         	}
@@ -196,14 +210,28 @@ public class UserInterface extends Application{
         		 Button resultButton = new Button(result);
         		 resultButton.setPrefWidth(resultsBox.getPrefWidth());
         		 resultButton.setOnAction(n -> {
-                     System.out.println("Clicked on: " + result);
+        			 CPU target = HibernateUtility.findCPUInfo(result);
+                     infoContent.setText(target.toString());
+                     addButton.setText("(+) " + target.getName());
         		 });
         		 resultsBox.getChildren().add(resultButton);
         	}
         });
         
+        
+        addButton.setPrefWidth(200);
+        addButton.setLayoutY(GUI_HEIGHT - 50);
+        addButton.setLayoutX(GUI_WIDTH - 250);
+        addButton.setOnAction(e -> {
+        	String cpuName = (addButton.getText()).substring(4);
+        	if (cpuName != null) {
+                System.out.println("Added CPU: " + cpuName);
+                System.out.println("some way of confirming");
+            }
+        });
+        
         anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, searchField, searchButton,
-        		clearButton, resultsScroll, backButton);
+        		clearButton, resultsScroll, infoBox, addButton, backButton);
         mainLayout.getChildren().addAll(anchorPaneMain);
         
         Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
@@ -212,16 +240,105 @@ public class UserInterface extends Application{
         primaryStage.setResizable(false);
 	}
 	
-	private List<String> searchCPU(String query){
-		Session session = HibernateUtility.start();
-		List<String> cpuNames = new ArrayList<>();
-		// Get CPUs
-		List<CPU> cpuList = session.createQuery("from CPU where name like :nameParameter", CPU.class)
-				.setParameter("nameParameter", "%" + query + "%").getResultList();
-		for(CPU cpu : cpuList) {
-			cpuNames.add(cpu.getName());
-		}
-		return cpuNames;
+	private void gpuScreenInit() {
+		// Main screen setup
+		VBox mainLayout = new VBox(10);
+      
+       /* ========= Main UI Interface ========= */
+       AnchorPane anchorPaneMain = new AnchorPane();
+       // Add text
+       Pane styleTop = new Pane();
+       Label programName = new Label("Begin Selection:");
+       programName.setFont(Font.font("System", FontWeight.BOLD, FontPosture.ITALIC, 20));
+       programName.setLayoutX(programName.getLayoutX() + 50);
+      
+       Label programNameBelow = new Label("Enter a GPU:");
+       programNameBelow.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
+       programNameBelow.setLayoutY(50);
+       programNameBelow.setLayoutX(10);
+      
+       TextField searchField = new TextField();
+       searchField.setLayoutX(100);
+       searchField.setLayoutY(50);
+       searchField.setPrefWidth(200);
+      
+       // buttons       
+       Button searchButton = new Button(">");
+       searchButton.setLayoutX(300);
+       searchButton.setLayoutY(50);
+       searchButton.setPrefWidth(30);
+      
+       Button clearButton = new Button("x");
+       clearButton.setLayoutX(330);
+       clearButton.setLayoutY(50);
+       clearButton.setPrefWidth(30);
+       clearButton.setOnAction(e -> gpuScreenInit());
+       VBox resultsBox = new VBox(5);
+       resultsBox.setLayoutX(10);
+       resultsBox.setLayoutY(100);
+       resultsBox.setPrefWidth(300);
+      
+       ScrollPane resultsScroll = new ScrollPane(resultsBox);
+       resultsScroll.setLayoutX(10);
+       resultsScroll.setLayoutY(100);
+       resultsScroll.setPrefSize(320, GUI_HEIGHT - 110);
+      
+       VBox infoBox = new VBox(10);
+       infoBox.setLayoutX(350);
+       infoBox.setLayoutY(100);
+       infoBox.setPrefWidth(280);
+       Label infoTitle = new Label("GPU Information:");
+       infoTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+       Label infoContent = new Label("Select a GPU to view details.");
+       infoContent.setWrapText(true);
+       infoBox.getChildren().addAll(infoTitle, infoContent);
+       Button addButton = new Button();
+      
+       // search button action
+       searchButton.setOnAction(e -> {
+       	searchField.setDisable(true);
+       	searchField.setStyle("-fx-background-color: lightgrey;");
+       	resultsBox.getChildren().clear();
+       	String query = searchField.getText();
+       	List<String> results = HibernateUtility.searchGPU(query);
+       	if(results.size() == 0) {
+       		resultsBox.getChildren().add(new Label("No results found :/\nPlease narrow your search as much as possible :)"));
+       	}
+       	for(String result : results) {
+       		// make button for result
+       		 Button resultButton = new Button(result);
+       		 resultButton.setPrefWidth(resultsBox.getPrefWidth());
+       		 resultButton.setOnAction(n -> {
+       			 GPU target = HibernateUtility.findGPUInfo(result);
+                    infoContent.setText(target.toString());
+                    addButton.setText("(+) " + target.getProductName());
+       		 });
+       		 resultsBox.getChildren().add(resultButton);
+       	}
+       });
+      
+      
+       addButton.setPrefWidth(200);
+       addButton.setLayoutY(GUI_HEIGHT - 50);
+       addButton.setLayoutX(GUI_WIDTH - 250);
+       addButton.setOnAction(e -> {
+       	String gpuName = (addButton.getText()).substring(4);
+       	if (gpuName != null) {
+               System.out.println("Added GPU: " + gpuName);
+               System.out.println("some way of confirming");
+           }
+       });
+      
+       anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, searchField, searchButton,
+       		clearButton, resultsScroll, infoBox, addButton, backButton);
+       mainLayout.getChildren().addAll(anchorPaneMain);
+      
+       Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
+       primaryStage.setScene(mainScene);
+       primaryStage.show();
+       primaryStage.setResizable(false);
 	}
+
+
 		
 }

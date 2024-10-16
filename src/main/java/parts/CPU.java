@@ -90,13 +90,22 @@ public class CPU {
     }
     /* Productivity score is calculated taking cores, threads, and cache as the main factors. */
     public Double getPScore(){
-        return (2.0 * getCores()) + (1.5 * getThreads()) + (1.5 * get_L3()) + (1.0 * getBaseClock())
+        return (2.0 * getCores()) + (1.5 * getThreads()) + (1.2 * get_L3()) + (1.0 * getBaseClock())
                 - (0.1 * getTDP());
     }
 
     @Override
     public String toString() {
-        return name + " {" + codename + ", " + cores + ", " + clock + ", " + socket + ", "
-                + process + ", " + l3_Cache + ", " + tdp + "} [" + getGScore() + " : " + getPScore() + "].\n";
+        return "Name: " + this.getName() + 
+                "\nCodename: " + this.getCodename() + 
+                "\nCores: " + this.getCores() + 
+                "\nBase Clock: " + this.getBaseClock() + 
+                "\nBoost Clock: " + this.getBoostClock() + 
+                "\nSocket: " + this.getSocket() + 
+                "\nProcess: " + this.getProcess() + 
+                "\nL3 Cache: " + this.get_L3() + 
+                "\nTDP: " + this.getTDP() + 
+                "\n\n-----\n\nGaming Score: " + String.format("%.5g%n", this.getGScore()) +
+                "\nProductivity Score: " + String.format("%.5g%n", this.getPScore());
     }
 }
