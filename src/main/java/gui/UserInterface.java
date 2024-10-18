@@ -31,11 +31,15 @@ import utils.HibernateUtility;
 
 public class UserInterface extends Application{
 
+	/** GUI Screen Size Values **/
 	private final int GUI_WIDTH = 640;
 	private final int GUI_HEIGHT = 480;
-	private Stage primaryStage;
-	private Button backButton;
-	private Button quitButton;
+	
+	/** The primary stage is used for main interaction, secondary for pop-ups. **/
+	private Stage primaryStage, secondaryStage;
+	
+	/** Buttons that are used in the program which can be found on every page. **/
+	private Button backButton, quitButton;
 	
 	
 	@Override
@@ -43,8 +47,7 @@ public class UserInterface extends Application{
 		this.primaryStage = primaryStage;
 		primaryStage.setTitle("Part Parser Home");
 		
-		Image icon = new Image(getClass().getResourceAsStream("/icon/cpu16.png"));
-		primaryStage.getIcons().add(icon);
+		primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/icon/cpu16.png")));
 		HibernateUtility.start();
 		
 		// Initialize some variables
