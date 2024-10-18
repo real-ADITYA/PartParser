@@ -6,6 +6,8 @@ import java.util.List;
 import org.hibernate.Session;
 
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -24,6 +26,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import parts.CPU;
 import parts.GPU;
+import priceScraper.*;
 import utils.HibernateUtility;
 
 public class UserInterface extends Application{
@@ -116,20 +119,36 @@ public class UserInterface extends Application{
         Button cpuButton = new Button("CPU Tool");
         cpuButton.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
         cpuButton.setPrefWidth(GUI_WIDTH/4);
-        cpuButton.setLayoutX((GUI_WIDTH - cpuButton.getWidth()) / 2.7);
+        cpuButton.setLayoutX((GUI_WIDTH - cpuButton.getWidth()) / 4);
         cpuButton.setLayoutY((GUI_HEIGHT - cpuButton.getHeight()) / 2.5);
         cpuButton.setOnAction(e -> cpuScreenInit() );
         
         Button gpuButton = new Button("GPU Tool");
-        gpuButton.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
-        gpuButton.setPrefWidth(GUI_WIDTH/4);
+        gpuButton.setFont(cpuButton.getFont());
+        gpuButton.setPrefWidth(cpuButton.getPrefWidth());
         gpuButton.setLayoutX(cpuButton.getLayoutX());
         gpuButton.setLayoutY(cpuButton.getLayoutY() + 50);
         gpuButton.setOnAction(e -> gpuScreenInit() );
         
-        quitButton.setLayoutY(gpuButton.getLayoutX() + 50);
+        Button cpuCompareButton = new Button("CPU Value Finder");
+        cpuCompareButton.setFont(cpuButton.getFont());
+        cpuCompareButton.setPrefWidth(cpuButton.getPrefWidth());
+        cpuCompareButton.setLayoutX(cpuButton.getLayoutX() + 180);
+        cpuCompareButton.setLayoutY(cpuButton.getLayoutY());
+        cpuCompareButton.setOnAction(e -> compareCPUScreenInit() );
         
-        anchorPaneMain.getChildren().addAll(programName, programNameBelow, cpuButton, gpuButton, quitButton);
+        Button gpuCompareButton = new Button("GPU Value Finder");
+        gpuCompareButton.setFont(cpuButton.getFont());
+        gpuCompareButton.setPrefWidth(cpuButton.getPrefWidth());
+        gpuCompareButton.setLayoutX(cpuButton.getLayoutX() + 180);
+        gpuCompareButton.setLayoutY(gpuButton.getLayoutY());
+        //gpuCompareButton.setOnAction(e -> compareGPUScreenInit() );
+        
+        quitButton.setLayoutY(gpuButton.getLayoutY() + 50);
+        quitButton.setLayoutX(gpuButton.getLayoutX());
+        
+        anchorPaneMain.getChildren().addAll(programName, programNameBelow, cpuButton, gpuButton, quitButton,
+        		cpuCompareButton, gpuCompareButton);
         mainLayout.getChildren().addAll(topMenu, anchorPaneMain);
         
         Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
@@ -331,6 +350,125 @@ public class UserInterface extends Application{
       
        anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, searchField, searchButton,
        		clearButton, resultsScroll, infoBox, addButton, backButton);
+       mainLayout.getChildren().addAll(anchorPaneMain);
+      
+       Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
+       primaryStage.setScene(mainScene);
+       primaryStage.show();
+       primaryStage.setResizable(false);
+	}
+	
+	private void compareCPUScreenInit() {
+		// Main screen setup
+		VBox mainLayout = new VBox(10);
+      
+       /* ========= Main UI Interface ========= */
+       AnchorPane anchorPaneMain = new AnchorPane();
+       // Add text
+       Pane styleTop = new Pane();
+       Label programName = new Label("Begin Selection:");
+       programName.setFont(Font.font("System", FontWeight.BOLD, FontPosture.ITALIC, 20));
+       programName.setLayoutX(programName.getLayoutX() + 50);
+      
+       Label programNameBelow = new Label(" -- Only include results with:");
+       programNameBelow.setFont(Font.font("System", FontWeight.NORMAL, FontPosture.ITALIC, 14));
+       programNameBelow.setLayoutY(50);
+       programNameBelow.setLayoutX(10);
+      
+       TextField searchField = new TextField();
+       searchField.setLayoutX(200);
+       searchField.setLayoutY(50);
+       searchField.setPrefWidth(200);
+      
+       // buttons       
+       Button searchButton = new Button(">");
+       searchButton.setLayoutX(400);
+       searchButton.setLayoutY(50);
+       searchButton.setPrefWidth(30);
+      
+       Button clearButton = new Button("x");
+       clearButton.setLayoutX(430);
+       clearButton.setLayoutY(50);
+       clearButton.setPrefWidth(30);
+       clearButton.setOnAction(e -> compareCPUScreenInit());
+
+       // output
+       VBox infoBox = new VBox(10);
+       infoBox.setLayoutX(10);
+       infoBox.setLayoutY(100);
+       infoBox.setPrefWidth(GUI_WIDTH - 20);
+       
+       Label infoContent = new Label("This process will take a while, depending on how narrow the search is.");
+       infoBox.getChildren().add(infoContent);
+       
+       // Progress bar for long-running tasks
+       ProgressBar progressBar = new ProgressBar(0);
+       progressBar.setPrefWidth(100);
+       progressBar.setLayoutX(clearButton.getLayoutX() + 50);
+       progressBar.setLayoutY(clearButton.getLayoutY());
+       progressBar.setVisible(false);
+      
+       // search button action
+       searchButton.setOnAction(e -> {
+       	searchField.setDisable(true);
+       	searchField.setStyle("-fx-background-color: lightgrey;");
+       	infoBox.getChildren().clear();
+       	progressBar.setVisible(true);
+       	String query = searchField.getText();
+       	List<Double> cpuPrices = new ArrayList<Double>();
+       	List<String> cpuNames = new ArrayList<String>();
+       	
+       	Task<Void> compareTask = new Task<Void>() {
+            @Override
+            protected Void call() throws Exception {
+                List<String> results = HibernateUtility.searchCPU(query);
+                if (results.isEmpty()) {
+                    Platform.runLater(() -> {
+                        infoBox.getChildren().clear();
+                        infoBox.getChildren().add(new Label("No results found :/\nPlease narrow your search as much as possible :)"));
+                    });
+                } else {
+                	EBAYDriver driver = new EBAYDriver();
+                    int count = results.size();
+                    for (int i = 0; i < count; i++) {
+                        String cpuName = results.get(i);
+                        driver.runScraper(cpuName, 0);
+
+                        // progress bar update
+                        updateProgress(i + 1, count);
+
+                        // get the average used cost of the CPU and save its value
+                        
+                        
+                        // updating the infobox to let the user know when the cpu has been processed
+                        Platform.runLater(() -> {
+                            infoBox.getChildren().add(new Label("Successfully processed: " + cpuName));
+                        });
+
+                    }
+                }
+                return null;
+            }
+       	};
+       	
+       	// progress bar update
+       	progressBar.progressProperty().bind(compareTask.progressProperty());
+
+       	// Hide the progress bar once the task is done
+        compareTask.setOnSucceeded(e2 -> {
+            progressBar.setVisible(false);
+            searchField.setDisable(false);
+        });
+
+        // Start the background task
+        new Thread(compareTask).start();
+       	
+       });
+       
+   
+    
+       anchorPaneMain.getChildren().addAll(styleTop, programName, programNameBelow, searchField, searchButton,
+       		clearButton, infoBox, progressBar, backButton);
        mainLayout.getChildren().addAll(anchorPaneMain);
       
        Scene mainScene = new Scene(mainLayout, GUI_WIDTH, GUI_HEIGHT);
